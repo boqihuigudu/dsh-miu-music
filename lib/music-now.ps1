@@ -78,7 +78,34 @@ try {
     }
     $mgrType = [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager, Windows.Media.Control, ContentType=WindowsRuntime]
     $mgr = & $await ($mgrType::RequestAsync()) ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager])
-    $session = $mgr.GetCurrentSession()
+    # 2026-11-03 修：原来用 GetCurrentSession()，谁最后播过/谁有焦点就是谁——
+    #   浏览器里放个视频就会把我们钉在浏览器上，明明 QQ音乐 正在放歌也读不到。
+    #   现在枚举所有会话：优先「正在播放」，其中优先常见音乐播放器；都没有才退回当前会话。
+    $sessions = @($mgr.GetSessions())
+    $preferredApps = @('QQMusic', 'Spotify', 'cloudmusic', 'kugou', 'KuGou', 'foobar2000')
+    $playing = @()
+    foreach ($s in $sessions) {
+        try {
+            $pi = $s.GetPlaybackInfo()
+            $st = [string]$pi.PlaybackStatus
+            if ($st -eq 'Playing') {
+                $playing += [pscustomobject]@{ session = $s; app = [string]$s.SourceAppUserModelId }
+            }
+        } catch { }
+    }
+    $session = $null
+    if ($playing.Count -gt 0) {
+        $musicHit = $null
+        foreach ($candidate in $playing) {
+            foreach ($appName in $preferredApps) {
+                if ($candidate.app -like "*$appName*") { $musicHit = $candidate; break }
+            }
+            if ($musicHit) { break }
+        }
+        if ($musicHit) { $session = $musicHit.session } else { $session = $playing[0].session }
+    } else {
+        $session = $mgr.GetCurrentSession()
+    }
     if ($session) {
         $info = $session.GetPlaybackInfo()
         $timeline = $session.GetTimelineProperties()
@@ -98,39 +125,54 @@ try {
 }
 catch { }
 
+# 2026-11-03 修：原来「SMTC 有结果就直接返回」，于是浏览器里放个视频就把
+#   QQ音乐 正在放的歌盖掉了（QQ音乐 有些版本根本不往 SMTC 上报）。
+#   现在两条路都拿，再按可信度挑：音乐播放器的 SMTC > 播放器窗口标题 > 任何 SMTC。
+$windowResult = $null
+try {
+    $hit = Get-FromWindowTitle
+    if ($hit) {
+        $raw = $hit.title
+        if ($raw -notmatch '^(QQ音乐|QQMusic)$' -and $raw -ne '') {
+            $parts = Split-TrackTitle $raw
+            $windowResult = [pscustomobject]@{
+                ok        = $true
+                source    = 'window'
+                sourceApp = $hit.proc
+                title     = $parts.title
+                artist    = $parts.artist
+                album     = ''
+                status    = 'playing'
+                position  = -1
+                duration  = -1
+                note      = '来自窗口标题，拿不到播放进度'
+            }
+        } elseif (-not $smtcResult) {
+            $windowResult = [pscustomobject]@{ ok = $false; reason = 'idle'; source = 'window'; message = 'QQ音乐 开着，但当前没有在放歌' }
+        }
+    }
+} catch { }
+
+$SMTC_MUSIC_APPS = @('QQMusic', 'Spotify', 'cloudmusic', 'kugou', 'foobar2000', 'Tencent')
+$smtcIsMusic = $false
+if ($smtcResult) {
+    foreach ($appName in $SMTC_MUSIC_APPS) {
+        if ([string]$smtcResult.sourceApp -like "*$appName*") { $smtcIsMusic = $true; break }
+    }
+}
+
+if ($smtcResult -and ($smtcIsMusic -or -not $windowResult)) {
+    Write-Result $smtcResult
+    exit 0
+}
+if ($windowResult) {
+    Write-Result $windowResult
+    exit 0
+}
 if ($smtcResult) {
     Write-Result $smtcResult
     exit 0
 }
 
-# ── 兜底：窗口标题 ──
-try {
-    $hit = Get-FromWindowTitle
-    if (-not $hit) {
-        Write-Result ([pscustomobject]@{ ok = $false; reason = 'no-player'; source = 'window'; message = '没有找到正在播放的播放器窗口（QQ音乐 没开，或者标题为空）' })
-        exit 0
-    }
-    $raw = $hit.title
-    # 没放歌时标题会变成「QQ音乐」之类的固定文字
-    if ($raw -match '^(QQ音乐|QQMusic)$' -or $raw -eq '') {
-        Write-Result ([pscustomobject]@{ ok = $false; reason = 'idle'; source = 'window'; message = 'QQ音乐 开着，但当前没有在放歌' })
-        exit 0
-    }
-    $parts = Split-TrackTitle $raw
-    Write-Result ([pscustomobject]@{
-        ok        = $true
-        source    = 'window'
-        sourceApp = $hit.proc
-        title     = $parts.title
-        artist    = $parts.artist
-        album     = ''
-        status    = 'playing'
-        position  = -1
-        duration  = -1
-        note      = '来自窗口标题，拿不到播放进度'
-    })
-}
-catch {
-    Write-Result ([pscustomobject]@{ ok = $false; reason = 'error'; source = 'window'; message = $_.Exception.Message })
-    exit 1
-}
+Write-Result ([pscustomobject]@{ ok = $false; reason = 'no-player'; source = 'window'; message = '没有找到正在播放的播放器（QQ音乐 没开，或者没在放歌）' })
+exit 0

@@ -45,6 +45,18 @@ plugin_manager install_bundle <这个仓库的路径或 npm 包名>
 
 所以 `miu_music_now` 其实是"系统层面现在在放什么"，不只 QQ 音乐。
 
+**1.5 读取优先级（很重要）**
+
+Windows 的 SMTC 允许多个播放器同时注册会话，而 `GetCurrentSession()` 返回的是"最后一次活跃"的那个——
+浏览器里放个视频就能把音乐播放器盖掉。所以本插件不是直接用它，而是：
+
+1. 枚举所有媒体会话，优先 **状态是 Playing 的**
+2. 其中优先**音乐播放器**（QQMusic / Spotify / 网易云 / 酷狗 / foobar2000）
+3. 如果播放器**不往 SMTC 上报**（QQ 音乐有些版本如此），退回读**播放器窗口标题**（`歌名 - 歌手`）
+4. 都没有才用 SMTC 的当前会话
+
+窗口标题这条兜底拿不到播放进度（`position/duration` 会是 -1），会带 `note` 说明来源。
+
 **2. 歌词和搜索走 QQ 音乐的公开接口**
 
 `u.y.qq.com/cgi-bin/musicu.fcg`，POST，**不需要登录、不需要 cookie**。所以搜歌和歌词在任何机器上都能用。

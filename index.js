@@ -23,26 +23,16 @@ import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// 必须是**顶层静态 import**：@deepseek-ai/dsh-tools 并不在 profile 的 node_modules 里，
+// 是 DSH 的插件加载器给插件模块做解析映射的。写成函数里的动态 import() 会绕过这层映射，
+// 报 "cannot resolve @deepseek-ai/dsh-tools"——从 npm/GitHub 装的时候必现。
+import { defineTool } from '@deepseek-ai/dsh-tools';
+
 export const name = 'dsh-miu-music';
 export const inject = ['tools'];
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CLI = join(HERE, 'lib', 'music.mjs');
-
-/** 与 plugin 包同一套解析策略：正常装到 profile 里裸包名就能解析。 */
-async function loadDefineTool() {
-  try {
-    const mod = await import('@deepseek-ai/dsh-tools');
-    if (mod?.defineTool) return mod.defineTool;
-  } catch { /* 落到环境变量 */ }
-  const override = process.env.DSH_TOOLS_PATH;
-  if (override) {
-    const { pathToFileURL } = await import('node:url');
-    const mod = await import(pathToFileURL(override).href);
-    if (mod?.defineTool) return mod.defineTool;
-  }
-  throw new Error('cannot resolve @deepseek-ai/dsh-tools');
-}
 
 /** 跑一次 CLI，拿它的 stdout。失败时把 stderr 一起带出去，别吞掉原因。 */
 function runMusic(args, timeoutMs = 30_000) {
@@ -86,7 +76,6 @@ const textOutput = {
 };
 
 export async function apply(ctx) {
-  const defineTool = await loadDefineTool();
 
   const nowTool = defineTool({
     name: 'miu_music_now',

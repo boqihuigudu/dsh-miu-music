@@ -30,12 +30,26 @@
 
 ## 安装
 
+**推荐：先把仓库 clone 到本地，再按路径安装。**
+
 ```bash
-# 在 DSH 里
-plugin_manager install_bundle <这个仓库的路径或 npm 包名>
+git clone https://github.com/boqihuigudu/dsh-miu-music.git
 ```
 
-或者手动放进 profile 的 `node_modules`，再在 `cordis.patch.yml` 里 insert。
+然后在 DSH 里（或让 agent 调 `plugin_manager`）：
+
+```
+plugin_manager install_bundle <克隆下来的完整路径>
+```
+
+装完应该能看到五个工具：`miu_music_now` / `miu_music_lyric` / `miu_music_search` / `miu_music_play` / `miu_music_control`。
+
+**想验证装没装上**：让 agent 调一次 `miu_music_search` 搜个歌名，能返回歌单就说明通了。
+
+**为什么不用 `github:` 直装**：我试过 `install_bundle github:boqihuigudu/dsh-miu-music`，
+pnpm 能把包装下来，但激活时报 `cannot resolve @deepseek-ai/dsh-tools`——
+DSH 给插件注入这个依赖的机制在那种安装方式下没生效。本地路径安装实测可用，就先按这个来。
+（如果谁把 git 直装搞定了，欢迎提 PR 改这一节。）
 
 ---
 

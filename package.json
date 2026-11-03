@@ -1,0 +1,19 @@
+{
+  "name": "dsh-miu-music",
+  "version": "0.1.0",
+  "description": "给 agent 一对耳朵：知道主人在听什么歌、取歌词、搜歌、切歌、按名字点播（Windows / QQ 音乐）",
+  "type": "module",
+  "main": "./index.js",
+  "license": "MIT",
+  "keywords": ["dsh", "dsh-plugin", "music", "qqmusic", "smtc", "windows", "agent"],
+  "files": ["index.js", "cordis.patch.yml", "lib/", "README.md", "LICENSE"],
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": ">=0.1.0-rc.7"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-tools": { "optional": true }
+  },
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" }
+  }
+}

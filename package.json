@@ -5,15 +5,46 @@
   "type": "module",
   "main": "./index.js",
   "license": "MIT",
-  "keywords": ["dsh", "dsh-plugin", "music", "qqmusic", "smtc", "windows", "agent"],
-  "files": ["index.js", "cordis.patch.yml", "lib/", "README.md", "LICENSE"],
+  "author": "boqihuigudu",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "music",
+    "qqmusic",
+    "smtc",
+    "windows",
+    "agent"
+  ],
+  "files": [
+    "index.js",
+    "cordis.patch.yml",
+    "lib/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20",
+    "dsh": ">=0.1.5-rc.1"
+  },
   "peerDependencies": {
     "@deepseek-ai/dsh-tools": ">=0.1.5-rc.1"
   },
   "peerDependenciesMeta": {
-    "@deepseek-ai/dsh-tools": { "optional": true }
+    "@deepseek-ai/dsh-tools": {
+      "optional": true
+    }
   },
   "dsh": {
-    "bundle": { "patch": "./cordis.patch.yml" }
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/boqihuigudu/dsh-miu-music.git"
+  },
+  "homepage": "https://github.com/boqihuigudu/dsh-miu-music#readme",
+  "bugs": {
+    "url": "https://github.com/boqihuigudu/dsh-miu-music/issues"
   }
 }

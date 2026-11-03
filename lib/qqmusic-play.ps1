@@ -190,12 +190,31 @@ try {
         if ($after -ne '' -and $after -ne $before) { $played = $true; break }
     }
 
+    # 2026-11-03 修：只判断「标题变了」会假成功——点到了列表里别的歌也变。
+    #   现在把标题和请求的词比一遍：对不上就 ok=false，并告诉调用方实际放的是什么。
+    $matched = $false
+    $tokens = @($song -split '\s+' | Where-Object { $_.Length -ge 2 })
+    if ($tokens.Count -eq 0 -and $song.Trim().Length -ge 2) { $tokens = @($song.Trim()) }
+    foreach ($token in $tokens) {
+        if ($after -like "*$token*") { $matched = $true; break }
+    }
+    $ok = $played -and $matched
+    $message = if ($ok) {
+        '已在 QQ音乐 里播放'
+    } elseif ($played -and -not $matched) {
+        "点到的不是这首歌（实际放的是「$after」）"
+    } else {
+        '没播上（搜索结果位置可能变了，或这首歌需要 VIP）'
+    }
+
     Write-Result @{
-        ok      = $played
-        query   = $song
-        before  = $before
-        after   = $after
-        message = if ($played) { '已在 QQ音乐 里播放' } else { '没播上（搜索结果位置可能变了，或这首歌需要 VIP）' }
+        ok           = $ok
+        requested    = $song
+        query        = $song
+        before       = $before
+        after        = $after
+        matchedTitle = $matched
+        message      = $message
     }
     exit 0
 }

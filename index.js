@@ -29,19 +29,29 @@ export const inject = ['tools'];
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CLI = join(HERE, 'lib', 'music.mjs');
 
-/** 与 plugin 包同一套解析策略：正常装到 profile 里裸包名就能解析。 */
+/**
+ * 拿 defineTool。
+ *
+ * 2026-11-04：@deepseek-ai/dsh-tools 不在用户的 node_modules 里——DSH 给**本地路径/链接**
+ * 安装的插件注入它，但从 npm / GitHub 装成真实包时解析不到，插件就整个激活失败。
+ * 所以这里做成可选：拿不到就退回"原样返回规格对象"，现代 DSH 的 ctx.tools.register
+ * 接受的本来就是这个形状。这样无论怎么装都能起来。
+ */
 async function loadDefineTool() {
   try {
     const mod = await import('@deepseek-ai/dsh-tools');
     if (mod?.defineTool) return mod.defineTool;
-  } catch { /* 落到环境变量 */ }
+  } catch { /* 继续试环境变量 */ }
   const override = process.env.DSH_TOOLS_PATH;
   if (override) {
-    const { pathToFileURL } = await import('node:url');
-    const mod = await import(pathToFileURL(override).href);
-    if (mod?.defineTool) return mod.defineTool;
+    try {
+      const { pathToFileURL } = await import('node:url');
+      const mod = await import(pathToFileURL(override).href);
+      if (mod?.defineTool) return mod.defineTool;
+    } catch { /* 落到兜底 */ }
   }
-  throw new Error('cannot resolve @deepseek-ai/dsh-tools');
+  // 兜底：不依赖 dsh-tools，直接把规格对象交给 ctx.tools.register。
+  return (spec) => spec;
 }
 
 /** 跑一次 CLI，拿它的 stdout。失败时把 stderr 一起带出去，别吞掉原因。 */

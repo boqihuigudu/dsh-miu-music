@@ -50,8 +50,37 @@ async function loadDefineTool() {
       if (mod?.defineTool) return mod.defineTool;
     } catch { /* 落到兜底 */ }
   }
-  // 兜底：不依赖 dsh-tools，直接把规格对象交给 ctx.tools.register。
-  return (spec) => spec;
+  // 兜底：不依赖 dsh-tools。但要注意 —— defineTool 原本会把 `required: true` 这种
+  // 简写转成标准 JSON Schema；自己退回时不做这步，register 会报
+  // "schema.properties.x.required is not supported on type string"。
+  // 所以这里递归把 properties 里的 required:true 提到父级的 required 数组。
+  return (spec) => normalizeRequired(spec);
+}
+
+function normalizeRequired(value) {
+  if (Array.isArray(value)) return value.map(normalizeRequired);
+  if (!value || typeof value !== 'object') return value;
+  const out = {};
+  for (const [key, item] of Object.entries(value)) {
+    if (key === 'required') { out.required = item; continue; }
+    out[key] = normalizeRequired(item);
+  }
+  if (out.properties && typeof out.properties === 'object') {
+    const required = new Set(Array.isArray(out.required) ? out.required : []);
+    const properties = {};
+    for (const [name, prop] of Object.entries(out.properties)) {
+      if (prop && typeof prop === 'object' && prop.required === true) {
+        const { required: _drop, ...rest } = prop;
+        properties[name] = normalizeRequired(rest);
+        required.add(name);
+      } else {
+        properties[name] = normalizeRequired(prop);
+      }
+    }
+    out.properties = properties;
+    if (required.size) out.required = [...required];
+  }
+  return out;
 }
 
 /** 跑一次 CLI，拿它的 stdout。失败时把 stderr 一起带出去，别吞掉原因。 */

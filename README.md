@@ -30,26 +30,28 @@
 
 ## 安装
 
-**推荐：先把仓库 clone 到本地，再按路径安装。**
+**一条命令：**
+
+```
+plugin_manager install_bundle github:boqihuigudu/dsh-miu-music
+```
+
+装完会注册五个工具：`miu_music_now` / `miu_music_lyric` / `miu_music_search` / `miu_music_play` / `miu_music_control`。
+
+**想验证装没装上**：让 agent 调一次 `miu_music_search` 搜个歌名，能返回歌单就说明通了。
+
+**备选（网络连不上 GitHub 时）**：clone 下来按本地路径装。
 
 ```bash
 git clone https://github.com/boqihuigudu/dsh-miu-music.git
 ```
-
-然后在 DSH 里（或让 agent 调 `plugin_manager`）：
-
 ```
 plugin_manager install_bundle <克隆下来的完整路径>
 ```
 
-装完应该能看到五个工具：`miu_music_now` / `miu_music_lyric` / `miu_music_search` / `miu_music_play` / `miu_music_control`。
-
-**想验证装没装上**：让 agent 调一次 `miu_music_search` 搜个歌名，能返回歌单就说明通了。
-
-**为什么不用 `github:` 直装**：我试过 `install_bundle github:boqihuigudu/dsh-miu-music`，
-pnpm 能把包装下来，但激活时报 `cannot resolve @deepseek-ai/dsh-tools`——
-DSH 给插件注入这个依赖的机制在那种安装方式下没生效。本地路径安装实测可用，就先按这个来。
-（如果谁把 git 直装搞定了，欢迎提 PR 改这一节。）
+> 提示：如果之前用本地路径装过，再改用 `github:` 装时，先
+> `plugin_manager remove_bundle dsh-miu-music`，并确认
+> `node_modules/dsh-miu-music` 那个目录已经删掉——pnpm 无法直接覆盖已存在的目录。
 
 ---
 
